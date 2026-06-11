@@ -1,0 +1,25 @@
+{
+  "name": "svelteflare-workspace",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter \"@svelteflare/*\" build",
+    "check": "bun run --filter \"@svelteflare/*\" check",
+    "clean": "rm -rf packages/*/dist packages/*/.svelte-kit",
+    "release:version": "bun run ./scripts/version.mjs",
+    "release:publish": "bun run build && bun run ./scripts/publish.mjs"
+  },
+  "devDependencies": {
+    "@sveltejs/package": "^2.5.7",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "svelte": "^5.55.2",
+    "svelte-check": "^4.4.6",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.7"
+  }
+}

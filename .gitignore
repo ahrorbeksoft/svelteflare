@@ -1,0 +1,7 @@
+node_modules/
+.svelte-kit/
+dist/
+bun.lockb
+.DS_Store
+drizzle
+.wrangler
