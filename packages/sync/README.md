@@ -435,10 +435,34 @@ export const todoSync = defineSync<Todo>({
 ```
 
 #### How Connection Identities are Registered
-The broker matches the user IDs returned by `scope` to each active client's socket state. By default, the server registers the connection's identity during the handshake using query parameters or headers:
+The broker matches the user IDs returned by `scope` to each active client's socket state. The server registers the connection's identity during the handshake using query parameters or the `x-user-id` header:
 ```typescript
-// e.g., connecting via: ws://localhost/api/sync?userId=usr_123
 const userId = url.searchParams.get("userId") || request.headers.get("x-user-id");
 ```
-You can also set the connection auth state manually during handshake validation on the server.
+
+##### Authenticating using SvelteKit Sessions & Cookies (Recommended)
+Instead of exposing user IDs in client-side WebSocket URLs, you can resolve the user session on the server inside your SvelteKit route (`+server.ts`) and inject the verified `x-user-id` header before calling `handleUpgrade()`:
+
+```typescript
+// src/routes/api/sync/+server.ts
+import { handleUpgrade } from "@svelteflare/sync";
+import type { RequestEvent, RequestHandler } from "@sveltejs/kit";
+
+export const GET: RequestHandler = (event: RequestEvent) => {
+  // 1. Get user identity from your custom server-side session/cookies
+  const user = event.locals.user; // e.g., set by your auth hook middleware
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // 2. Clone the request and inject the verified user ID header
+  const request = new Request(event.request);
+  request.headers.set("x-user-id", user.id);
+
+  // 3. Hand off to the sync engine
+  return handleUpgrade(request, event.platform);
+};
+```
+This approach keeps WebSocket URLs clean of private IDs and ensures all active sockets are automatically authenticated with their verified session roles/IDs.
+
 
