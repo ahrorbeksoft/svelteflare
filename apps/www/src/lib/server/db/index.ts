@@ -4,9 +4,12 @@ import * as schema from "./schema";
 export const createDB = (database: D1Database) =>
   d1Drizzle(database, { schema });
 
-export function getDB(platform: App.Platform | undefined) {
-  if (platform?.env.DB) {
+export function getDB(platform: any) {
+  if (platform?.env?.DB) {
     return createDB(platform.env.DB);
   }
-  throw new Error("D1 Database binding 'DB' is not available in platform.env");
+  if (platform?.DB) {
+    return createDB(platform.DB);
+  }
+  throw new Error("D1 Database binding 'DB' is not available");
 }
