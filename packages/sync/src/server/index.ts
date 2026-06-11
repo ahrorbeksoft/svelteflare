@@ -25,7 +25,7 @@ export type SyncHandlerConfig<TRow = any> = {
     ctx: SyncContext,
     action: "create" | "update" | "delete",
     data: any,
-  ) => string[] | "all";
+  ) => Promise<string[] | "all"> | string[] | "all";
 };
 
 export interface SyncHandler<TRow = any> {

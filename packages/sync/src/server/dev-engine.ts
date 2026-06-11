@@ -1,5 +1,6 @@
 import { SyncBroker, type ISyncConnection } from "./broker.js";
 import type { SyncHandler } from "./index.js";
+import type { IncomingMessage } from "node:http";
 
 const GLOBAL_KEY = "__sync_dev_broker__";
 
@@ -32,14 +33,41 @@ function getDevBroker(): SyncBroker {
   throw new Error("Sync dev broker not initialized. Call setHandlers first.");
 }
 
-export function addClient(ws: {
-  send: (data: string) => void;
-  close: (code?: number, reason?: string) => void;
-  on: (event: string, listener: (...args: any[]) => void) => void;
-}) {
+export function addClient(
+  ws: {
+    send: (data: string) => void;
+    close: (code?: number, reason?: string) => void;
+    on: (event: string, listener: (...args: any[]) => void) => void;
+  },
+  req: IncomingMessage,
+) {
   const broker = getDevBroker();
   const subscribedChannels = new Set<string>();
   let auth: any = null;
+
+  // Convert Node IncomingMessage headers to web-standard Headers
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        headers.append(key, v);
+      }
+    } else {
+      headers.set(key, value);
+    }
+  }
+
+  const urlObj = new URL(
+    req.url ?? "",
+    `http://${req.headers.host || "localhost"}`,
+  );
+  
+  // Align with DO behavior to set local dev auth
+  const userId = urlObj.searchParams.get("userId") || headers.get("x-user-id");
+  if (userId) {
+    auth = { userId };
+  }
 
   const conn: ISyncConnection = {
     send(data) {
@@ -57,6 +85,8 @@ export function addClient(ws: {
     getSubscribedChannels() {
       return subscribedChannels;
     },
+    headers,
+    url: urlObj.toString(),
   };
 
   broker.registerConnection(conn);
@@ -65,12 +95,14 @@ export function addClient(ws: {
   ws.on("message", async (data: any) => {
     const messageString = String(data);
     console.log("dev-engine: WebSocket message received:", messageString.slice(0, 100));
-    const dummyRequest = new Request("http://localhost/api/sync");
+    const request = new Request(conn.url, {
+      headers: conn.headers,
+    });
     try {
       console.log("dev-engine: getting platform proxy...");
       const platform = await getPlatform();
       console.log("dev-engine: platform proxy obtained, handling message...");
-      await broker.handleMessage(conn, messageString, platform, dummyRequest);
+      await broker.handleMessage(conn, messageString, platform, request);
       console.log("dev-engine: message handled successfully");
     } catch (err) {
       console.error("dev-engine: Error handling message:", err);

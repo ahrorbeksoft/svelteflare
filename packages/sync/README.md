@@ -289,3 +289,156 @@ Both SvelteKit and the dev WebSocket server share the **exact same emulated D1 d
 
 ### Message Buffering
 Vite's module loading is asynchronous. When upgrading WebSocket connections, the plugin buffers incoming WebSocket frames during the module import phase. Once modules have fully loaded and handlers are registered, it replays the buffered messages to avoid connection race conditions.
+
+---
+
+## 4. Security, Authorization & Scoping
+
+### Handshake HTTP Context (Cookies & Headers)
+When the WebSocket connection is established, the HTTP upgrade request's headers, cookies, and query parameters are captured. 
+
+This context is preserved and passed to every sync handler execution (`fetch`, `create`, `update`, `remove`, `authorize`, `scope`) via the **`ctx.request`** object. Developers can parse session cookies or credentials inside mutations and queries:
+
+```typescript
+// Helper to extract session profile from handshake request
+async function getSession(ctx: SyncContext) {
+  const cookie = ctx.request.headers.get("Cookie");
+  const db = getDB(ctx.platform);
+  // Perform session verification/DB lookup...
+  return { userId: "usr_123", role: "admin" };
+}
+```
+
+---
+
+### The `authorize` Hook
+The `authorize` hook acts as a guard. It runs synchronously on the server when a client attempts to **subscribe** to a channel or submit a **mutation** (create, update, delete). If it throws an error, the operation is rejected and rolled back.
+
+```typescript
+authorize: async (ctx) => {
+  const user = await getSession(ctx);
+  if (!user) {
+    throw new Error("Unauthorized access to channel");
+  }
+}
+```
+
+---
+
+### Throwing & Filtering in Handlers (CRUD Operations)
+
+Beyond the global `authorize` hook, you can enforce security directly inside your query (`fetch`) and mutation (`create`, `update`, `remove`) handlers:
+
+#### 1. Filtering on Read (`fetch`)
+Use the handshake HTTP request (`ctx.request`) to dynamically filter the records fetched from the database, preventing users from pulling unauthorized rows.
+
+```typescript
+fetch: async (ctx, since) => {
+  const db = getDB(ctx.platform);
+  const user = await getSession(ctx);
+
+  let query = db.select().from(todos);
+  const conditions = [];
+
+  // Enforce read boundaries
+  if (user.role !== "admin") {
+    conditions.push(eq(todos.published, true)); // Non-admins only read published todos
+  }
+  if (since) {
+    conditions.push(gt(todos.updatedAt, since)); // Apply delta sync timestamp
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+  return await query;
+}
+```
+
+#### 2. Throwing on Write & Delete (`create`, `update`, `remove`)
+You can throw regular JavaScript/TypeScript errors inside your mutation handlers. When an error is thrown:
+1. The server catches the error and rejects the mutation.
+2. The server sends a rejection response back to the client.
+3. The client receives the rejection, triggers the `rollback` function, and reverts the optimistic UI change in IndexedDB.
+
+```typescript
+create: async (ctx, data) => {
+  const user = await getSession(ctx);
+  
+  // Guard write action
+  if (user.role !== "editor" && user.role !== "admin") {
+    throw new Error("You do not have permission to create items.");
+  }
+  
+  const db = getDB(ctx.platform);
+  const [created] = await db.insert(todos).values(data).returning();
+  return created;
+},
+
+update: async (ctx, key, changes) => {
+  const user = await getSession(ctx);
+  const db = getDB(ctx.platform);
+
+  // Fetch target record to verify ownership
+  const [record] = await db.select().from(todos).where(eq(todos.id, key));
+  if (record.ownerId !== user.userId && user.role !== "admin") {
+    throw new Error("You cannot update a record owned by someone else.");
+  }
+
+  const [updated] = await db.update(todos).set(changes).where(eq(todos.id, key)).returning();
+  return updated;
+},
+
+remove: async (ctx, key) => {
+  const user = await getSession(ctx);
+  
+  // Guard delete action
+  if (user.role !== "admin") {
+    throw new Error("Only admins can delete items.");
+  }
+
+  const db = getDB(ctx.platform);
+  await db.delete(todos).where(eq(todos.id, key));
+}
+```
+
+---
+
+### The `scope` Hook (Row-Level Broadcast Filtering)
+The `scope` hook determines which of the connected and subscribed clients should receive real-time notifications when a database record is modified. It runs asynchronously after a mutation succeeds on the database.
+
+* Return **`"all"`** to broadcast the change to every client subscribed to the channel.
+* Return an **array of user IDs** (`string[]`) to restrict the broadcast. The broker will match these IDs against the connection's registered identity and skip broadcasting to everyone else.
+
+```typescript
+export const todoSync = defineSync<Todo>({
+  channel: "todos",
+
+  // Runs when a todo changes. Returns list of user IDs allowed to see this update
+  scope: async (ctx, action, data) => {
+    const db = getDB(ctx.platform);
+
+    // 1. Public records are broadcasted to all subscribers
+    if (data.published) {
+      return "all";
+    }
+
+    // 2. Draft/Private records are only broadcasted to admins
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "admin"));
+
+    return admins.map((admin) => admin.id);
+  }
+});
+```
+
+#### How Connection Identities are Registered
+The broker matches the user IDs returned by `scope` to each active client's socket state. By default, the server registers the connection's identity during the handshake using query parameters or headers:
+```typescript
+// e.g., connecting via: ws://localhost/api/sync?userId=usr_123
+const userId = url.searchParams.get("userId") || request.headers.get("x-user-id");
+```
+You can also set the connection auth state manually during handshake validation on the server.
+

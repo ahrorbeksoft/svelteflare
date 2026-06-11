@@ -71,7 +71,10 @@ export function syncDevPlugin(options?: SyncDevPluginOptions): Plugin {
               (client as any).off("message", onMessage);
 
               // Register client in the dev engine
-              (devEngine.addClient as (ws: unknown) => void)(client);
+              (devEngine.addClient as (ws: unknown, req: unknown) => void)(
+                client,
+                request,
+              );
               console.log("sync-dev-plugin: WebSocket upgrade handler completed, replaying buffered messages:", messageQueue.length);
 
               // Replay any buffered messages

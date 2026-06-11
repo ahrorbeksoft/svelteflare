@@ -7,6 +7,8 @@ export interface ISyncConnection {
   getAuth(): any;
   setAuth(auth: any): void;
   getSubscribedChannels(): Set<string>;
+  readonly headers: Headers;
+  readonly url: string;
 }
 
 export class SyncBroker {
@@ -223,7 +225,7 @@ export class SyncBroker {
     }
   }
 
-  private broadcastChange(
+  private async broadcastChange(
     sender: ISyncConnection,
     channel: string,
     action: "create" | "update" | "delete",
@@ -246,7 +248,7 @@ export class SyncBroker {
     let allowedUserIds: string[] | "all" = "all";
     if (handler.config.scope) {
       try {
-        allowedUserIds = handler.config.scope(ctx, action, data);
+        allowedUserIds = await handler.config.scope(ctx, action, data);
       } catch (e) {
         console.error("SyncBroker: error resolving broadcast scope:", e);
       }

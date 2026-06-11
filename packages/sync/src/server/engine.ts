@@ -5,9 +5,13 @@ class CloudflareSyncConnection implements ISyncConnection {
   private ws: WebSocket;
   private auth: any = null;
   private subscribedChannels = new Set<string>();
+  public readonly headers: Headers;
+  public readonly url: string;
 
-  constructor(ws: WebSocket) {
+  constructor(ws: WebSocket, request: Request) {
     this.ws = ws;
+    this.headers = new Headers(request.headers);
+    this.url = request.url;
   }
 
   send(data: string) {
@@ -80,7 +84,7 @@ export class SyncEngineBase extends DurableObject<Env> {
 
     this.ctx.acceptWebSocket(server);
 
-    const conn = new CloudflareSyncConnection(server);
+    const conn = new CloudflareSyncConnection(server, request);
 
     const url = new URL(request.url);
     const userId =
@@ -104,12 +108,14 @@ export class SyncEngineBase extends DurableObject<Env> {
 
     if (typeof message !== "string") return;
 
-    const dummyRequest = new Request("https://sync.internal/");
+    const request = new Request(conn.url, {
+      headers: conn.headers,
+    });
     await this.broker.handleMessage(
       conn,
       message,
       this.env as any,
-      dummyRequest,
+      request,
     );
   }
 
