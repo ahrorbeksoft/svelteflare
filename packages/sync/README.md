@@ -120,15 +120,21 @@ Use it in your Svelte 5 components:
 
 <input bind:value={title} onkeydown={(e) => e.key === 'Enter' && addTodo()} />
 
-{#each todos.current ?? [] as todo (todo.id)}
-  <div>
-    <button onclick={() => todosTable.put(todo.id, { completed: !todo.completed })}>
-      <Check class={todo.completed ? "text-emerald-500" : ""} />
-    </button>
-    <span>{todo.title}</span>
-    <button onclick={() => todosTable.delete(todo.id)}><Trash /></button>
-  </div>
-{/each}
+{#if todos.isLoading}
+  <div>Loading todos...</div>
+{:else if todos.status === "error"}
+  <div>Error loading database: {todos.error?.message || todos.error}</div>
+{:else}
+  {#each todos.data as todo (todo.id)}
+    <div>
+      <button onclick={() => todosTable.put(todo.id, { completed: !todo.completed })}>
+        <Check class={todo.completed ? "text-emerald-500" : ""} />
+      </button>
+      <span>{todo.title}</span>
+      <button onclick={() => todosTable.delete(todo.id)}><Trash /></button>
+    </div>
+  {/each}
+{/if}
 ```
 
 ---

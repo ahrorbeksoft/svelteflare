@@ -14,12 +14,12 @@
 
 	const visibleTodos = $derived(
 		filter === "all"
-			? (todosQuery.current ?? [])
-			: (todosQuery.current ?? []).filter((todo) => todo.completed === (filter === "completed"))
+			? (todosQuery.data ?? [])
+			: (todosQuery.data ?? []).filter((todo) => todo.completed === (filter === "completed"))
 	);
 
-	const activeCount = $derived((todosQuery.current ?? []).filter((todo) => !todo.completed).length);
-	const completedCount = $derived((todosQuery.current ?? []).length - activeCount);
+	const activeCount = $derived((todosQuery.data ?? []).filter((todo) => !todo.completed).length);
+	const completedCount = $derived((todosQuery.data ?? []).length - activeCount);
 
 	async function addTodo() {
 		const nextTitle = title.trim();
@@ -170,8 +170,10 @@
 		</div>
 
 		<div class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
-			{#if todosQuery.current === undefined}
+			{#if todosQuery.isLoading}
 				<div class="p-8 text-center text-sm text-zinc-500">Loading todos...</div>
+			{:else if todosQuery.status === "error"}
+				<div class="p-8 text-center text-sm text-red-500">Error loading database: {todosQuery.error?.message || todosQuery.error}</div>
 			{:else if visibleTodos.length === 0}
 				<div class="p-8 text-center">
 					<p class="font-medium text-zinc-800">No todos here.</p>

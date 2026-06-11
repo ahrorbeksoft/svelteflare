@@ -1,8 +1,8 @@
 import Dexie, { type Table } from "dexie";
 import { parseSyncMessage, type SyncMessage } from "../protocol.js";
-import { useLiveQuery } from "./live.svelte.js";
+import { useLiveQuery, type LiveQueryResult } from "./live.svelte.js";
 
-export { useLiveQuery };
+export { useLiveQuery, type LiveQueryResult };
 
 export type TableConfig = {
   indexes: string;
