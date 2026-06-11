@@ -7,7 +7,7 @@ type AppDatabaseSchema = {
 };
 
 export const sync = new SyncClient<AppDatabaseSchema>({
-  name: "ielts-app",
+  name: "svelteflare-sync",
   url: "/api/sync",
   tables: {
     todos: {

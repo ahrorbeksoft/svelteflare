@@ -1,8 +1,10 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "ielts-app",
+  "name": "svelteflare",
   "compatibility_date": "2026-06-07",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "main": ".svelte-kit/cloudflare/_worker.js",
   "assets": {
     "binding": "ASSETS",
@@ -13,10 +15,10 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "ielts",
-      "database_id": "f45690ee-55a3-473d-907f-3d82eed6551d",
+      "database_name": "svelteflare-sync",
+      "database_id": "e6e95149-19a9-44cc-bcef-3ebcd4342deb",
       "migrations_dir": "drizzle/migrations",
-    },
+    }
   ],
   "durable_objects": {
     "bindings": [
@@ -29,7 +31,9 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["SyncEngine"],
+      "new_sqlite_classes": [
+        "SyncEngine"
+      ],
     },
   ],
 }

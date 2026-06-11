@@ -6,8 +6,3 @@ export class SyncEngine extends SyncEngineBase {
     super(ctx, env, handlers);
   }
 }
-
-export const scheduled = undefined as any;
-export const queue = undefined as any;
-export const email = undefined as any;
-export const tail = undefined as any;

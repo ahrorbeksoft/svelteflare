@@ -1,23 +1,29 @@
-import { dev } from "$app/environment";
-import { getRequestEvent } from "$app/server";
-
 export async function publishEvent(
   channel: string,
   action: "create" | "update" | "delete",
   key: string | undefined,
   data: any,
 ) {
-  if (dev) {
+  const envId = "$app/environment";
+  let isDev = false;
+  try {
+    const env = await import(/* @vite-ignore */ envId);
+    isDev = env.dev;
+  } catch {}
+
+  if (isDev) {
     const { broadcastExternalChange } = await import("./dev-engine.js");
     await broadcastExternalChange(channel, action, key, data);
     return;
   }
 
-  const { platform } = getRequestEvent();
-  const namespace = platform?.env.SYNC_ENGINE;
-  if (!namespace) return;
-
   try {
+    const serverId = "$app/server";
+    const { getRequestEvent } = await import(/* @vite-ignore */ serverId);
+    const { platform } = getRequestEvent();
+    const namespace = platform?.env.SYNC_ENGINE;
+    if (!namespace) return;
+
     const id = namespace.idFromName("global");
     const stub = namespace.get(id);
     await stub.fetch("https://realtime.internal/broadcast", {
