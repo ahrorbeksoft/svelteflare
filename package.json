@@ -1,6 +1,6 @@
 {
   "name": "svelteflare-workspace",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -10,6 +10,7 @@
   "scripts": {
     "build": "bun run --filter \"@svelteflare/*\" build",
     "check": "bun run --filter \"@svelteflare/*\" check",
+    "deploy": "bun run --filter svelteflare-www deploy",
     "clean": "rm -rf packages/*/dist packages/*/.svelte-kit",
     "release:version": "bun run ./scripts/version.mjs",
     "release:publish": "bun run build && bun run ./scripts/publish.mjs"
