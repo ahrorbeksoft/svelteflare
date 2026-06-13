@@ -1,7 +1,7 @@
 {
   "name": "svelteflare-www",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -45,7 +45,8 @@
     "wrangler": "^4.81.0"
   },
   "dependencies": {
-    "@svelteflare/sync": "0.2.1",
+    "@svelteflare/sync": "0.2.2",
+    "@svelteflare/auth": "0.2.2",
     "@tanstack/query-core": "^5.101.0",
     "dexie": "^4.4.3",
     "drizzle-orm": "^0.45.2",

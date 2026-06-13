@@ -8,7 +8,8 @@
       "@svelteflare/sync": ["packages/sync/src/index.ts"],
       "@svelteflare/auth": ["packages/auth/src/index.ts"],
       "@svelteflare/auth/client": ["packages/auth/src/client/index.ts"],
-      "@svelteflare/auth/server": ["packages/auth/src/server/index.ts"]
+      "@svelteflare/auth/server": ["packages/auth/src/server/index.ts"],
+      "@svelteflare/auth/google": ["packages/auth/src/google/index.ts"]
     },
     "lib": ["ES2022", "DOM"],
     "strict": true,

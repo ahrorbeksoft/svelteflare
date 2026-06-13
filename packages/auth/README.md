@@ -229,3 +229,137 @@ export const handlers = [
 
 * **`createAuthSync(config: SyncAuthConfig)`**
   Establishes the read-only `"users"` sync channel verifying WebSocket subscriptions.
+
+---
+
+## 7. Google OAuth Integration
+
+`@svelteflare/auth/google` provides a fully reactive Svelte 5 wrapper for the **Google Identity Services (GIS)** SDK. It allows you to embed official Google Sign-In buttons, use One Tap login, or trigger custom-styled login buttons.
+
+### Wrapper Setup (`GoogleOAuthProvider`)
+
+Wrap your page or layout where you intend to use Google Sign-In with the `<GoogleOAuthProvider>` and pass your Google Client ID:
+
+```svelte
+<script lang="ts">
+  import { GoogleOAuthProvider } from "@svelteflare/auth/google";
+  import MyLoginComponent from "./MyLoginComponent.svelte";
+</script>
+
+<GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com">
+  <MyLoginComponent />
+</GoogleOAuthProvider>
+```
+
+### Standard Sign-In Button (`GoogleLogin`)
+
+The `<GoogleLogin>` component renders the official iframe-based customizable button:
+
+```svelte
+<!-- MyLoginComponent.svelte -->
+<script lang="ts">
+  import { GoogleLogin } from "@svelteflare/auth/google";
+  import type { CredentialResponse } from "@svelteflare/auth/google";
+
+  function handleSuccess(response: CredentialResponse) {
+    console.log("JWT credential token:", response.credential);
+    // Send this credential to your backend to log in or create an account!
+  }
+
+  function handleError() {
+    console.error("Sign-In failed");
+  }
+</script>
+
+<GoogleLogin onSuccess={handleSuccess} onError={handleError} />
+```
+
+### Custom Styled Buttons (`createGoogleLogin`)
+
+For custom-styled login buttons, use the `createGoogleLogin` helper. It must be called in a child component of `<GoogleOAuthProvider>`. It returns a trigger `login` function alongside reactive `loading` and `error` states:
+
+```svelte
+<!-- MyLoginComponent.svelte -->
+<script lang="ts">
+  import { createGoogleLogin } from "@svelteflare/auth/google";
+
+  const googleAuth = createGoogleLogin({
+    flow: "implicit", // or 'auth-code'
+    scope: "email profile", // additional scopes if needed
+    onSuccess: (response) => {
+      console.log("OAuth response:", response); // contains access_token or code
+    },
+    onError: (err) => {
+      console.error("Auth error:", err);
+    }
+  });
+</script>
+
+<button 
+  onclick={() => googleAuth.login()} 
+  disabled={googleAuth.loading}
+  class="custom-btn"
+>
+  {#if googleAuth.loading}
+    Logging in...
+  {:else}
+    Login with Google (Custom UI)
+  {/if}
+</button>
+
+{#if googleAuth.error}
+  <p class="error">Error: {googleAuth.error.message}</p>
+{/if}
+```
+
+### Google One Tap (`GoogleOneTapLogin`)
+
+Mount the `<GoogleOneTapLogin>` component to display Google's native One Tap prompt when the page loads:
+
+```svelte
+<script lang="ts">
+  import { GoogleOneTapLogin } from "@svelteflare/auth/google";
+  import type { CredentialResponse } from "@svelteflare/auth/google";
+</script>
+
+<GoogleOneTapLogin 
+  onSuccess={(response: CredentialResponse) => console.log("One Tap JWT:", response.credential)}
+  onError={() => console.error("One Tap dismissed/failed")}
+/>
+```
+
+### Revoking/Logging Out (`googleLogout`)
+
+To sign out the user from the current Google session and disable automatic sign-in on future visits:
+
+```typescript
+import { googleLogout } from "@svelteflare/auth/google";
+
+function logout() {
+  googleLogout();
+  // ... clear local user session state
+}
+```
+
+### Decoding Credentials (`decodeCredentials`)
+
+When using the `<GoogleLogin>` or `<GoogleOneTapLogin>` components, Google returns a credential string which is a signed JWT token containing the user's profile information. You can use the `decodeCredentials` function to decode this token on either the client or server into a typed `GoogleData` object:
+
+```svelte
+<script lang="ts">
+  import { GoogleLogin, decodeCredentials } from "@svelteflare/auth/google";
+  import type { CredentialResponse, GoogleData } from "@svelteflare/auth/google";
+
+  function handleSuccess(response: CredentialResponse) {
+    if (response.credential) {
+      const decoded: GoogleData = decodeCredentials(response.credential);
+      console.log("Decoded user profile:", decoded);
+      console.log("User email:", decoded.email);
+      console.log("User name:", decoded.name);
+      console.log("Profile picture:", decoded.picture);
+    }
+  }
+</script>
+
+<GoogleLogin onSuccess={handleSuccess} />
+```
