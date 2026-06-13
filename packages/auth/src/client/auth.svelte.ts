@@ -63,6 +63,17 @@ export class AuthClientState<User extends { id: string; token: string }> {
     this.#userGetter = user;
     this.#localOverride = undefined; // Reset local override on new init
 
+    // Reactive effect to reset local override whenever the server's user getter updates
+    $effect(() => {
+      // Access the getter reactively so Svelte tracks this dependency
+      const serverUser = typeof this.#userGetter === "function"
+        ? (this.#userGetter as () => User | null)()
+        : this.#userGetter;
+
+      // Clear any local override (like query error overrides) whenever the server session changes
+      this.#localOverride = undefined;
+    });
+
     // Set up the internal sync channel subscription if syncClient is provided and not already initialized.
     // Calling this here is safe because init() is executed during layout component initialization.
     if (this.#syncClient && !this.#usersQuery) {

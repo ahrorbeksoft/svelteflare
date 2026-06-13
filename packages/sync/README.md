@@ -193,7 +193,7 @@ export const todoSync = defineSync<Todo>({
     return updated;
   },
 
-  remove: async (ctx, key) => {
+  delete: async (ctx, key) => {
     const db = getDB(ctx.platform);
     await db.delete(todos).where(eq(todos.id, key));
   },
@@ -303,7 +303,7 @@ Vite's module loading is asynchronous. When upgrading WebSocket connections, the
 ### Handshake HTTP Context (Cookies & Headers)
 When the WebSocket connection is established, the HTTP upgrade request's headers, cookies, and query parameters are captured. 
 
-This context is preserved and passed to every sync handler execution (`fetch`, `create`, `update`, `remove`, `authorize`, `scope`) via the **`ctx.request`** object. Developers can parse session cookies or credentials inside mutations and queries:
+This context is preserved and passed to every sync handler execution (`fetch`, `create`, `update`, `delete`, `authorize`, `scope`) via the **`ctx.request`** object. Developers can parse session cookies or credentials inside mutations and queries:
 
 ```typescript
 // Helper to extract session profile from handshake request
@@ -333,7 +333,7 @@ authorize: async (ctx) => {
 
 ### Throwing & Filtering in Handlers (CRUD Operations)
 
-Beyond the global `authorize` hook, you can enforce security directly inside your query (`fetch`) and mutation (`create`, `update`, `remove`) handlers:
+Beyond the global `authorize` hook, you can enforce security directly inside your query (`fetch`) and mutation (`create`, `update`, `delete`) handlers:
 
 #### 1. Filtering on Read (`fetch`)
 Use the handshake HTTP request (`ctx.request`) to dynamically filter the records fetched from the database, preventing users from pulling unauthorized rows.
@@ -361,7 +361,7 @@ fetch: async (ctx, since) => {
 }
 ```
 
-#### 2. Throwing on Write & Delete (`create`, `update`, `remove`)
+#### 2. Throwing on Write & Delete (`create`, `update`, `delete`)
 You can throw regular JavaScript/TypeScript errors inside your mutation handlers. When an error is thrown:
 1. The server catches the error and rejects the mutation.
 2. The server sends a rejection response back to the client.
@@ -395,7 +395,7 @@ update: async (ctx, key, changes) => {
   return updated;
 },
 
-remove: async (ctx, key) => {
+delete: async (ctx, key) => {
   const user = await getSession(ctx);
   
   // Guard delete action

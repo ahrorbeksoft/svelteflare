@@ -1,7 +1,7 @@
 import { defineSync } from "@svelteflare/sync";
 import { getUserFromRequest, verifyJWT, getVerifiedUserFromRequest } from "../index.js";
 
-export interface SyncAuthConfig {
+export interface SyncAuthConfig<User = any> {
   /**
    * Secret key used to verify the JWT tokens.
    */
@@ -14,7 +14,7 @@ export interface SyncAuthConfig {
   /**
    * Optional database hook to verify if the user still exists or is active.
    */
-  verifyUser?: (userId: string, ctx: any) => Promise<boolean>;
+  verifyUser?: (user: User, ctx: any) => Promise<boolean>;
   /**
    * Optional database hook to persist user mutations.
    */
@@ -25,7 +25,7 @@ export interface SyncAuthConfig {
  * Creates a Svelteflare Sync handler for WebSocket-based session validation.
  * Registers the read-only "users" channel.
  */
-export function createAuthSync(config: SyncAuthConfig) {
+export function createAuthSync<User = any>(config: SyncAuthConfig<User>) {
   const cookieName = config.cookieName || "sf_session";
 
   return defineSync({
@@ -48,7 +48,7 @@ export function createAuthSync(config: SyncAuthConfig) {
 
       // 2. Perform optional database validation (check if active/deleted)
       if (config.verifyUser) {
-        const isValid = await config.verifyUser(payload.id, ctx);
+        const isValid = await config.verifyUser(payload as User, ctx);
         if (!isValid) {
           throw new Error("Unauthorized: User no longer exists");
         }
@@ -86,7 +86,7 @@ export function createAuthSync(config: SyncAuthConfig) {
       return { ...user, ...changes };
     },
 
-    remove: async () => {
+    delete: async () => {
       throw new Error("Forbidden: User deletion is disabled on sync channel");
     }
   });

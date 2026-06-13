@@ -15,7 +15,7 @@ export type SyncHandlerConfig<TRow = any> = {
     key: string,
     changes: Partial<TRow>,
   ) => Promise<TRow>;
-  remove: (ctx: SyncContext, key: string) => Promise<void>;
+  delete: (ctx: SyncContext, key: string) => Promise<void>;
   authorize?: (ctx: SyncContext) => Promise<void>;
   validate?: {
     create?: ZodSchema<any>;

@@ -56,7 +56,7 @@ export const todoSync = defineSync<Todo>({
     return updated;
   },
 
-  remove: async (ctx: SyncContext, key: string) => {
+  delete: async (ctx: SyncContext, key: string) => {
     const db = getDB(ctx.platform);
     await db.delete(todos).where(eq(todos.id, key));
   },

@@ -181,7 +181,7 @@ export class SyncBroker {
             }
             result = await handler.config.update(ctx, msg.key!, msg.data);
           } else if (msg.action === "delete") {
-            await handler.config.remove(ctx, msg.key!);
+            await handler.config.delete(ctx, msg.key!);
             result = { id: msg.key };
           }
 
