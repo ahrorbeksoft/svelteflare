@@ -5,7 +5,10 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
-      "@svelteflare/sync": ["packages/sync/src/index.ts"]
+      "@svelteflare/sync": ["packages/sync/src/index.ts"],
+      "@svelteflare/auth": ["packages/auth/src/index.ts"],
+      "@svelteflare/auth/client": ["packages/auth/src/client/index.ts"],
+      "@svelteflare/auth/server": ["packages/auth/src/server/index.ts"]
     },
     "lib": ["ES2022", "DOM"],
     "strict": true,

@@ -4,6 +4,12 @@ import type { Todo } from "$lib/server/db/schema";
 // Define the client-side database schema mapping table name to row type
 type AppDatabaseSchema = {
   todos: Todo;
+  users: {
+    id: string;
+    token: string;
+    email: string;
+    name: string;
+  };
 };
 
 export const sync = new SyncClient<AppDatabaseSchema>({
@@ -13,6 +19,10 @@ export const sync = new SyncClient<AppDatabaseSchema>({
     todos: {
       indexes: "id, completed, createdAt",
       channel: "todos",
+    },
+    users: {
+      indexes: "id",
+      channel: "users",
     },
   },
 });

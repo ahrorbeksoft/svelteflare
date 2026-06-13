@@ -1,13 +1,26 @@
 <script lang="ts">
 	import { Check, ListTodo, Plus, RefreshCw, Trash2 } from "lucide-svelte";
+	import { invalidateAll } from "$app/navigation";
 
 	import { todosTable } from "$lib/sync-client";
 	import type { Todo } from "$lib/server/db/schema";
+	import { auth } from "$lib/auth-client";
 
 	let title = $state("");
 	let filter = $state<"all" | "active" | "completed">("all");
 	let errorMessage = $state("");
 	let isRefreshing = $state(false);
+
+	let newName = $state("");
+
+	// Prefill the renaming input when the user changes
+	$effect(() => {
+		if (auth.user) {
+			newName = auth.user.name;
+		} else {
+			newName = "";
+		}
+	});
 
 	// Fetch todos reactively using Dexie liveQuery
 	const todosQuery = todosTable.liveQuery((t) => t.orderBy("createdAt").reverse().toArray());
@@ -85,10 +98,60 @@
 		isRefreshing = true;
 		errorMessage = "";
 		try {
-			// Real-time sync works automatically, but we can do a brief spinner reset to delight the user
 			await new Promise((resolve) => setTimeout(resolve, 300));
 		} finally {
 			isRefreshing = false;
+		}
+	}
+
+	async function loginAsDummy() {
+		errorMessage = "";
+		try {
+			const res = await fetch("/api/auth/login", { method: "POST" });
+			if (!res.ok) throw new Error("Failed to login");
+			await invalidateAll();
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to login";
+		}
+	}
+
+	async function logout() {
+		errorMessage = "";
+		try {
+			await auth.logout();
+			await invalidateAll();
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to logout";
+		}
+	}
+
+	async function updateProfile() {
+		errorMessage = "";
+		try {
+			const nameVal = newName.trim();
+			if (!nameVal) {
+				errorMessage = "Profile name cannot be empty.";
+				return;
+			}
+			await auth.update({ name: nameVal });
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to update profile";
+		}
+	}
+
+	async function toggleBan(banned: boolean) {
+		errorMessage = "";
+		try {
+			const res = await fetch("/api/auth/ban", {
+				method: "POST",
+				body: JSON.stringify({ banned }),
+				headers: { "Content-Type": "application/json" }
+			});
+			if (!res.ok) throw new Error("Failed to toggle ban");
+			// Force reload to re-run WebSocket handshake / subscription
+			window.location.reload();
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to toggle ban";
 		}
 	}
 </script>
@@ -121,6 +184,88 @@
 				{isRefreshing ? "Refreshing" : "Refresh"}
 			</button>
 		</header>
+
+		<!-- Auth Test Control Panel -->
+		<div class="mb-6 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+			<h2 class="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">Authentication Testing Control</h2>
+			
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div class="flex flex-col gap-1">
+					<div class="flex items-center gap-3">
+						<div class="h-3 w-3 rounded-full {auth.isAuthenticated ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}"></div>
+						<div>
+							<p class="text-sm font-medium text-zinc-900">
+								{#if auth.isAuthenticated}
+									Logged in as <span class="font-semibold text-emerald-700">{auth.user?.name}</span>
+								{:else}
+									Guest Mode (Local-Only Sync)
+								{/if}
+							</p>
+							<p class="text-xs text-zinc-500">
+								{#if auth.isAuthenticated}
+									Session active. WebSocket verified via "users" channel.
+								{:else}
+									Todos are saved locally in Dexie. Log in to sync.
+								{/if}
+							</p>
+						</div>
+					</div>
+
+					{#if auth.isAuthenticated}
+						<div class="mt-3 flex items-center gap-2 border-t border-zinc-100 pt-3">
+							<input
+								class="h-8 rounded-md border border-zinc-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+								bind:value={newName}
+								placeholder="New name"
+								aria-label="New name"
+							/>
+							<button
+								class="inline-flex h-8 items-center justify-center rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+								type="button"
+								onclick={updateProfile}
+							>
+								Rename User
+							</button>
+						</div>
+					{/if}
+				</div>
+
+				<div class="flex flex-wrap gap-2 self-start sm:self-center">
+					{#if !auth.isAuthenticated}
+						<button
+							class="inline-flex h-9 items-center justify-center rounded-md bg-emerald-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+							type="button"
+							onclick={loginAsDummy}
+						>
+							Log In as Dummy User
+						</button>
+					{:else}
+						<button
+							class="inline-flex h-9 items-center justify-center rounded-md border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-100"
+							type="button"
+							onclick={logout}
+						>
+							Log Out
+						</button>
+						<button
+							class="inline-flex h-9 items-center justify-center rounded-md bg-red-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700"
+							type="button"
+							onclick={() => toggleBan(true)}
+						>
+							Simulate Server Ban (Revoke)
+						</button>
+					{/if}
+					
+					<button
+						class="inline-flex h-9 items-center justify-center rounded-md border border-zinc-200 bg-zinc-100 px-4 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-200"
+						type="button"
+						onclick={() => toggleBan(false)}
+					>
+						Reset Server Ban
+					</button>
+				</div>
+			</div>
+		</div>
 
 		<form
 			class="mb-5 flex gap-2 rounded-lg border border-zinc-200 bg-white p-2 shadow-sm"

@@ -44,7 +44,7 @@ export async function handleUpgrade(
     return new Response("Expected Upgrade: websocket", { status: 426 });
   }
 
-  const namespace = platform?.env.SYNC_ENGINE;
+  const namespace = (platform as any)?.env?.SYNC_ENGINE;
   if (!namespace) {
     return new Response("SyncEngine binding is not available", { status: 500 });
   }
